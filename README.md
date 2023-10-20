@@ -18,7 +18,7 @@ OH BOY ITS HAPPENING <sub><sup>(im in shambles)</sup></sub>
 
 ## Updates and other information:
 
-10/20/2023 (day before comp 1)
+### 10/20/2023 (day before comp 1)
 
 I have been trying to get pros to work for the past few days now. I have no idea why it doesn't work. 
 
