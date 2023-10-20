@@ -1,13 +1,82 @@
 #include "main.h"
 #include "lemlib/api.hpp"
 
-// PHYSICAL OBJECTS INITS
-pros::Motor left_front_motor(1, pros::E_MOTOR_GEARSET_06, false); // port 1, blue gearbox, not reversed
-pros::Motor left_back_motor(2, pros::E_MOTOR_GEARSET_18, false); // port 2, green gearbox, not reversed
-pros::Motor right_front_motor(3, pros::E_MOTOR_GEARSET_36, true); // port 3, red gearbox, reversed
-pros::Motor right_back_motor(4, pros::E_MOTOR_GEARSET_36, true); // port 4, red gearbox, reversed
+//======================================//
+// PHYSICAL OBJECTS INITS 				//
+//======================================//
 
-// VARS
+// drivebase setup
+pros::Motor lFmotor(14, pros::E_MOTOR_GEARSET_06, false);
+pros::Motor lBmotor(17, pros::E_MOTOR_GEARSET_06, false);
+pros::Motor rFmotor(7, pros::E_MOTOR_GEARSET_06, true);
+pros::Motor rBmotor(6, pros::E_MOTOR_GEARSET_06, true);
+
+pros::MotorGroup lMotors({lFmotor, lBmotor});
+pros::MotorGroup rMotors({rFmotor, rBmotor});
+
+lemlib::Drivetrain_t drivetrain {
+    &lMotors, // left drivetrain motors
+    &rMotors, // right drivetrain motors
+    12, // track width
+    3.25, // wheel diameter
+    360 // wheel rpm
+};
+
+/*
+// left tracking wheel encoder
+pros::ADIEncoder left_enc('A', 'B', true); // ports A and B, reversed
+// right tracking wheel encoder
+pros::Rotation right_rot(1, false); // port 1, not reversed
+// back tracking wheel encoder
+pros::ADIEncoder back_enc('C', 'D', false); // ports C and D, not reversed
+
+// left tracking wheel
+lemlib::TrackingWheel left_tracking_wheel(&left_enc, 2.75, -4.6); // 2.75" wheel diameter, -4.6" offset from tracking center
+// right tracking wheel
+lemlib::TrackingWheel right_tracking_wheel(&right_rot, 2.75, 1.7); // 2.75" wheel diameter, 1.7" offset from tracking center
+lemlib::TrackingWheel back_tracking_wheel(&back_enc, 2.75, 4.5); // 2.75" wheel diameter, 4.5" offset from tracking center
+*/
+ 
+// inertial sensor
+pros::Imu inertial_sensor(2); // port 2
+
+
+// odometry struct
+lemlib::OdomSensors_t sensors {
+	// fuck you bozo
+};
+
+ 
+// forward/backward PID
+lemlib::ChassisController_t lateralController {
+    8, // kP
+    30, // kD
+    1, // smallErrorRange
+    100, // smallErrorTimeout
+    3, // largeErrorRange
+    500, // largeErrorTimeout
+    5 // slew rate
+};
+ 
+// turning PID
+lemlib::ChassisController_t angularController {
+    4, // kP
+    40, // kD
+    1, // smallErrorRange
+    100, // smallErrorTimeout
+    3, // largeErrorRange
+    500, // largeErrorTimeout
+    40 // slew rate
+};
+ 
+ 
+// create the chassis
+lemlib::Chassis chassis(drivetrain, lateralController, angularController,sensors);
+
+//======================================//
+// VARS					 				//
+//======================================//
+
 bool wingOn = false;
 
 /*
@@ -27,11 +96,11 @@ void on_center_button() {
 }
 
 /*
- * Runs initialization code. This occurs as soon as the program is started.
- *
- * All other competition modes are blocked by initialize; it is recommended
- * to keep execution time for this mode under a few seconds.
- */
+Runs initialization code. This occurs as soon as the program is started.
+
+All other competition modes are blocked by initialize; it is recommended
+to keep execution time for this mode under a few seconds.
+*/
 void initialize() {
 	pros::lcd::initialize();
 	pros::lcd::set_text(1, "Hello PROS User!");
