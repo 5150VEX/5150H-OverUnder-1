@@ -1,11 +1,21 @@
 #include "main.h"
+#include "lemlib/api.hpp"
 
-/**
- * A callback function for LLEMU's center button.
- *
- * When this callback is fired, it will toggle line 2 of the LCD text between
- * "I was pressed!" and nothing.
- */
+// PHYSICAL OBJECTS INITS
+pros::Motor left_front_motor(1, pros::E_MOTOR_GEARSET_06, false); // port 1, blue gearbox, not reversed
+pros::Motor left_back_motor(2, pros::E_MOTOR_GEARSET_18, false); // port 2, green gearbox, not reversed
+pros::Motor right_front_motor(3, pros::E_MOTOR_GEARSET_36, true); // port 3, red gearbox, reversed
+pros::Motor right_back_motor(4, pros::E_MOTOR_GEARSET_36, true); // port 4, red gearbox, reversed
+
+// VARS
+bool wingOn = false;
+
+/*
+A callback function for LLEMU's center button.
+ 
+When this callback is fired, it will toggle line 2 of the LCD text between
+"I was pressed!" and nothing.
+*/
 void on_center_button() {
 	static bool pressed = false;
 	pressed = !pressed;
@@ -16,7 +26,7 @@ void on_center_button() {
 	}
 }
 
-/**
+/*
  * Runs initialization code. This occurs as soon as the program is started.
  *
  * All other competition modes are blocked by initialize; it is recommended

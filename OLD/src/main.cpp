@@ -1,7 +1,7 @@
-#include "../include/main.h"
-#include "../include/hbot.hpp"
-#include "../include/pros/llemu.hpp"
-#include "../include/pros/rtos.hpp"
+#include "main.h"
+#include "hbot.hpp"
+#include "pros/llemu.hpp"
+#include "pros/rtos.hpp"
 
 
 std::unique_ptr<Robot> robot = nullptr;

@@ -6,7 +6,7 @@ OH BOY ITS HAPPENING <sub><sup>(im in shambles)</sup></sub>
 
 ## Tasks: <sub><sup>(in order)</sup></sub>
 
-- [ ] GET PROS TO WORK OMG PLEASE
+- [x] GET PROS TO WORK OMG PLEASE
 - [ ] Make good drive code (arcade)
 - [ ] Cata Launch code
 - [ ] Hang code
@@ -18,7 +18,7 @@ OH BOY ITS HAPPENING <sub><sup>(im in shambles)</sup></sub>
 
 ## Updates and other information:
 
-### 10/20/2023 (day before comp 1)
+### 10/20/2023 (before meeting)
 
 I have been trying to get pros to work for the past few days now. I have no idea why it doesn't work. 
 
@@ -37,3 +37,9 @@ I am going to try the following when I can:
 - use a different laptop
 
 I hope that something will work because I'm very quickly starting to panic.
+
+#### UPDATE:
+
+I brought my personal laptop, everything works perfectly now. I'm going to try to get as much done before the meeting right now.
+
+I'm currently going through the process of using LimLib, a library for PID and other QoL stuff.
