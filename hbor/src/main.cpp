@@ -1,9 +1,14 @@
 #include "main.h"
 #include "lemlib/api.hpp"
+#include "hbot.hpp"
 
-//======================================//
-// PHYSICAL OBJECTS INITS 				//
-//======================================//
+//======================================// Red   : 36
+// PHYSICAL OBJECTS INITS 				// Green : 12
+//======================================// Blue  : 06
+
+pros::Controller controller(pros::E_CONTROLLER_MASTER); // controller setup
+
+pros::Motor cata(20, pros::E_MOTOR_GEARSET_36, false); // cata motor
 
 // drivebase setup
 pros::Motor lFmotor(14, pros::E_MOTOR_GEARSET_06, false);
@@ -11,12 +16,12 @@ pros::Motor lBmotor(17, pros::E_MOTOR_GEARSET_06, false);
 pros::Motor rFmotor(7, pros::E_MOTOR_GEARSET_06, true);
 pros::Motor rBmotor(6, pros::E_MOTOR_GEARSET_06, true);
 
-pros::MotorGroup lMotors({lFmotor, lBmotor});
-pros::MotorGroup rMotors({rFmotor, rBmotor});
+pros::MotorGroup left({lFmotor, lBmotor});
+pros::MotorGroup right({rFmotor, rBmotor});
 
 lemlib::Drivetrain_t drivetrain {
-    &lMotors, // left drivetrain motors
-    &rMotors, // right drivetrain motors
+    &left, // left drivetrain motors
+    &right, // right drivetrain motors
     12, // track width
     3.25, // wheel diameter
     360 // wheel rpm
@@ -36,17 +41,15 @@ lemlib::TrackingWheel left_tracking_wheel(&left_enc, 2.75, -4.6); // 2.75" wheel
 lemlib::TrackingWheel right_tracking_wheel(&right_rot, 2.75, 1.7); // 2.75" wheel diameter, 1.7" offset from tracking center
 lemlib::TrackingWheel back_tracking_wheel(&back_enc, 2.75, 4.5); // 2.75" wheel diameter, 4.5" offset from tracking center
 */
- 
+	
 // inertial sensor
 pros::Imu inertial_sensor(2); // port 2
-
 
 // odometry struct
 lemlib::OdomSensors_t sensors {
 	// fuck you bozo
 };
 
- 
 // forward/backward PID
 lemlib::ChassisController_t lateralController {
     8, // kP
@@ -57,7 +60,7 @@ lemlib::ChassisController_t lateralController {
     500, // largeErrorTimeout
     5 // slew rate
 };
- 
+
 // turning PID
 lemlib::ChassisController_t angularController {
     4, // kP
@@ -68,8 +71,8 @@ lemlib::ChassisController_t angularController {
     500, // largeErrorTimeout
     40 // slew rate
 };
- 
- 
+	
+	
 // create the chassis
 lemlib::Chassis chassis(drivetrain, lateralController, angularController,sensors);
 
@@ -94,6 +97,15 @@ void on_center_button() {
 		pros::lcd::clear_line(2);
 	}
 }
+
+void cataLaunch(){
+	if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2)){
+		cata.move(-100);
+		//cout("cata is running");
+	} else {
+		cata.brake();
+	}
+};
 
 /*
 Runs initialization code. This occurs as soon as the program is started.
@@ -137,7 +149,9 @@ void competition_initialize() {}
  * will be stopped. Re-enabling the robot will restart the task, not re-start it
  * from where it left off.
  */
-void autonomous() {}
+void autonomous() {
+	//chassis.moveTo(float x, float y, int timeout);
+}
 
 /**
  * Runs the operator control code. This function will be started in its own task
@@ -153,20 +167,24 @@ void autonomous() {}
  * task, not resume it from where it left off.
  */
 void opcontrol() {
-	pros::Controller master(pros::E_CONTROLLER_MASTER);
-	pros::Motor left_mtr(1);
-	pros::Motor right_mtr(2);
 
 	while (true) {
-		pros::lcd::print(0, "%d %d %d", (pros::lcd::read_buttons() & LCD_BTN_LEFT) >> 2,
-		                 (pros::lcd::read_buttons() & LCD_BTN_CENTER) >> 1,
-		                 (pros::lcd::read_buttons() & LCD_BTN_RIGHT) >> 0);
-		int left = master.get_analog(ANALOG_LEFT_Y);
-		int right = master.get_analog(ANALOG_RIGHT_Y);
+        auto turn = controller.get_analog(ANALOG_RIGHT_X);
+        auto power = controller.get_analog(ANALOG_LEFT_Y);
+        left.move(power - turn);
+		right.move(power + turn);
+	
+		/*
+        if (controller->pressed(DIGITAL_R1) && 
+			controller->pressed(DIGITAL_R2) && 
+			controller->pressed(DIGITAL_L1) && 
+			controller->pressed(DIGITAL_L2)) {
+            robot->endgame->fire();
+        }
+		*/
+		cataLaunch();
 
-		left_mtr = left;
-		right_mtr = right;
-
-		pros::delay(20);
-	}
+		
+        pros::delay(5);
+    }
 }
