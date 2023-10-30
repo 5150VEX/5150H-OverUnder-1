@@ -1,6 +1,8 @@
 #include "main.h"
 #include "lemlib/api.hpp"
 #include "hbot.hpp"
+#include <iostream>
+#include <string>
 
 //======================================// Red   : 36
 // PHYSICAL OBJECTS INITS 				// Green : 12
@@ -11,10 +13,10 @@ pros::Controller controller(pros::E_CONTROLLER_MASTER); // controller setup
 pros::Motor cata(20, pros::E_MOTOR_GEARSET_36, false); // cata motor
 
 // drivebase setup
-pros::Motor lFmotor(14, pros::E_MOTOR_GEARSET_06, false);
-pros::Motor lBmotor(17, pros::E_MOTOR_GEARSET_06, false);
-pros::Motor rFmotor(7, pros::E_MOTOR_GEARSET_06, true);
-pros::Motor rBmotor(6, pros::E_MOTOR_GEARSET_06, true);
+pros::Motor lFmotor(14, pros::E_MOTOR_GEARSET_06, false, pros::E_MOTOR_ENCODER_DEGREES);
+pros::Motor lBmotor(17, pros::E_MOTOR_GEARSET_06, false, pros::E_MOTOR_ENCODER_DEGREES);
+pros::Motor rFmotor(7, pros::E_MOTOR_GEARSET_06, true, pros::E_MOTOR_ENCODER_DEGREES);
+pros::Motor rBmotor(6, pros::E_MOTOR_GEARSET_06, true, pros::E_MOTOR_ENCODER_DEGREES);
 
 pros::MotorGroup left({lFmotor, lBmotor});
 pros::MotorGroup right({rFmotor, rBmotor});
@@ -43,33 +45,37 @@ lemlib::TrackingWheel back_tracking_wheel(&back_enc, 2.75, 4.5); // 2.75" wheel 
 */
 	
 // inertial sensor
-pros::Imu inertial_sensor(2); // port 2
+pros::Imu gyro(16);
 
 // odometry struct
 lemlib::OdomSensors_t sensors {
-	// fuck you bozo
+	nullptr, // vertical tracking wheel 1
+    nullptr, // vertical tracking wheel 2
+    nullptr, // horizontal tracking wheel 1
+    nullptr, // we don't have a second tracking wheel, so we set it to nullptr
+    &gyro // inertial sensor
 };
 
 // forward/backward PID
 lemlib::ChassisController_t lateralController {
-    8, // kP
-    30, // kD
+    100, // kP
+    0, // kD
     1, // smallErrorRange
-    100, // smallErrorTimeout
+    10000, // smallErrorTimeout
     3, // largeErrorRange
-    500, // largeErrorTimeout
+    50000, // largeErrorTimeout
     5 // slew rate
 };
 
 // turning PID
 lemlib::ChassisController_t angularController {
-    4, // kP
-    40, // kD
-    1, // smallErrorRange
+    1.6, // kP
+    0, // kD 110 128
+    0.25, // smallErrorRange
     100, // smallErrorTimeout
-    3, // largeErrorRange
+    1, // largeErrorRange
     500, // largeErrorTimeout
-    40 // slew rate
+    5
 };
 	
 	
@@ -80,52 +86,79 @@ lemlib::Chassis chassis(drivetrain, lateralController, angularController,sensors
 // VARS					 				//
 //======================================//
 
+bool wingFlag = true;
 bool wingOn = false;
+float moveBais = 1;
+const double PI = 3.14159;
 
-/*
-A callback function for LLEMU's center button.
- 
-When this callback is fired, it will toggle line 2 of the LCD text between
-"I was pressed!" and nothing.
-*/
-void on_center_button() {
-	static bool pressed = false;
-	pressed = !pressed;
-	if (pressed) {
-		pros::lcd::set_text(2, "I was pressed!");
-	} else {
-		pros::lcd::clear_line(2);
-	}
-}
+//======================================//
+// VOIDS				 				//
+//======================================//
 
 void cataLaunch(){
-	if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2)){
-		cata.move(-100);
-		//cout("cata is running");
+	bool r1 = controller.get_digital(pros::E_CONTROLLER_DIGITAL_R1);
+	bool r2 = controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2);
+
+	if (r2 && r1){
+		cata.move(-64);
 	} else {
-		cata.brake();
+		if (r2){
+			cata.move(-127);
+		} else {
+			cata.brake();
+		}
 	}
 };
 
-/*
-Runs initialization code. This occurs as soon as the program is started.
+void wingControl(){
+	bool ba = controller.get_digital(pros::E_CONTROLLER_DIGITAL_A);
+	pros::ADIDigitalOut wing ('g', false);
 
-All other competition modes are blocked by initialize; it is recommended
-to keep execution time for this mode under a few seconds.
-*/
+	if (wingFlag && ba) {
+		wingFlag = false;
+		wing.set_value(!wingOn);
+	}
+
+	if (!ba) { 
+		wingFlag = true;
+	}
+};
+
+void turnTo(float deg, float speed, int timeout){
+	chassis.turnTo(cos(deg * (PI/180)), sin(deg * (PI/180)), timeout, false, speed);
+}
+
+void screen() {
+    // loop forever
+    while (true) {
+        lemlib::Pose pose = chassis.getPose(); // get the current position of the robot
+        pros::lcd::print(0, "x: %f", pose.x); // print the x position
+        pros::lcd::print(1, "y: %f", pose.y); // print the y position
+        pros::lcd::print(2, "heading: %f", pose.theta); // print the heading
+
+        pros::delay(10);
+    }
+}
+
 void initialize() {
 	pros::lcd::initialize();
-	pros::lcd::set_text(1, "Hello PROS User!");
+	pros::lcd::set_text(1, "5150 HAVOC");
 
-	pros::lcd::register_btn1_cb(on_center_button);
+	chassis.calibrate();
+	chassis.setPose(0, 0, 0);
+
+	pros::Task screenTask(screen);
 }
+
 
 /**
  * Runs while the robot is in the disabled state of Field Management System or
  * the VEX Competition Switch, following either autonomous or opcontrol. When
  * the robot is enabled, this task will exit.
  */
-void disabled() {}
+void disabled() {
+
+}
 
 /**
  * Runs after initialize(), and before autonomous when connected to the Field
@@ -136,7 +169,9 @@ void disabled() {}
  * This task will exit when the robot is enabled and autonomous or opcontrol
  * starts.
  */
-void competition_initialize() {}
+void competition_initialize() {
+
+}
 
 /**
  * Runs the user autonomous code. This function will be started in its own task
@@ -150,7 +185,9 @@ void competition_initialize() {}
  * from where it left off.
  */
 void autonomous() {
-	//chassis.moveTo(float x, float y, int timeout);
+	chassis.turnTo(30, 0, 5000, false);
+
+	//turnTo(180, 127, 500);
 }
 
 /**
@@ -173,7 +210,6 @@ void opcontrol() {
         auto power = controller.get_analog(ANALOG_LEFT_Y);
         left.move(power - turn);
 		right.move(power + turn);
-	
 		/*
         if (controller->pressed(DIGITAL_R1) && 
 			controller->pressed(DIGITAL_R2) && 
@@ -182,12 +218,14 @@ void opcontrol() {
             robot->endgame->fire();
         }
 		*/
+
 		cataLaunch();
+		wingControl();
 
 		
 
 
-		
+
         pros::delay(5);
     }
 }
