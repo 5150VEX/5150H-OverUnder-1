@@ -71,9 +71,9 @@ lemlib::ChassisController_t lateralController {
 lemlib::ChassisController_t angularController {
     1.6, // kP
     0, // kD 110 128
-    0.25, // smallErrorRange
+    2, // smallErrorRange
     100, // smallErrorTimeout
-    1, // largeErrorRange
+    5, // largeErrorRange
     500, // largeErrorTimeout
     5
 };
