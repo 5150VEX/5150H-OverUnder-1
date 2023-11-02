@@ -11,6 +11,7 @@
 pros::Controller controller(pros::E_CONTROLLER_MASTER); // controller setup
 
 pros::Motor cata(20, pros::E_MOTOR_GEARSET_36, false); // cata motor
+pros::Motor intake(2, pros::E_MOTOR_GEARSET_36, false); // intake motor
 
 // drivebase setup
 pros::Motor lFmotor(14, pros::E_MOTOR_GEARSET_06, false, pros::E_MOTOR_ENCODER_DEGREES);
@@ -70,8 +71,8 @@ lemlib::ChassisController_t lateralController {
 // turning PID
 lemlib::ChassisController_t angularController {
     1.6, // kP
-    0, // kD 110 128
-    2, // smallErrorRange
+    128, // kD 110 128
+    3, // smallErrorRange
     100, // smallErrorTimeout
     5, // largeErrorRange
     500, // largeErrorTimeout
