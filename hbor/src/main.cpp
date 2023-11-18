@@ -1,5 +1,6 @@
 #include "main.h"
 #include "lemlib/api.hpp"
+#include "autoSelect/selection.h"
 #include "hbot.hpp"
 #include <iostream>
 #include <string>
@@ -55,26 +56,25 @@ lemlib::OdomSensors_t sensors {
 // forward/backward PID
 // forward backward pid for smooth lateral movment
 lemlib::ChassisController_t lateralController {
-    100, // kP
-    0, // kD
+    8, // kP
+    64, // kD
     1, // smallErrorRange
-    10000, // smallErrorTimeout
-    3, // largeErrorRange
-    50000, // largeErrorTimeout
+    100, // smallErrorTimeout
+    2, // largeErrorRange
+    500, // largeErrorTimeout
     5 // slew rate
 };
 
 // turning PID
-// left and right pid for smooth turning (the one piece of code that we have been struggling with for a while. 
-// I figured out that tunning the PID on a hardwood floor was the issue and we are now using the tiles to tune it)
+// left and right pid for smooth turning
 lemlib::ChassisController_t angularController {
-    0.75, // kP 0.75
-    60, // kD 72.8
-    1, // smallErrorRange
-    100, // smallErrorTimeout
-    25, // largeErrorRange
-    500, // largeErrorTimeout
-    5
+    .kP = -8, // kP 0.75
+    .kD = -64, // kD 64
+    .smallError = 0.5, // smallErrorRange
+    .smallErrorTimeout = 100, // smallErrorTimeout
+    .largeError = 1, // largeErrorRange
+    .largeErrorTimeout = 500, // largeErrorTimeout
+    .slew = 5
 };
 	
 // create the chassis
@@ -145,10 +145,10 @@ void outtake(int speed){
 // v v v WING CONTROLS                        v v v //
 void wingControl(){
 	bool ba = controller.get_digital(pros::E_CONTROLLER_DIGITAL_A);
-
+    
+    // setting up a toggle for the wing
 	if (wingFlag && ba) {
 		wingFlag = false;
-
         if (wingState){
             wingState = false;
 		    wing.set_value(false);
@@ -158,6 +158,9 @@ void wingControl(){
         }
 	}
 
+    // the magic of the toggle function
+    // the wingFlag, once set to false, will only set to true again if the A button...
+    // ... isn't pressed, this prevents repeated calls to open and close the wing
 	if (!ba) {
 		wingFlag = true;
 	}
@@ -174,6 +177,7 @@ void wingSet(bool state){
 void endgameControl(){
 	bool l1 = controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1);
 
+    // setting up a toggle for the hanger
 	if (endFlag && l1) {
 		endFlag = false;
 
@@ -186,6 +190,8 @@ void endgameControl(){
         }
 	}
 
+    // the endFlag, once set to false, will only set to true again if the left bumper...
+    // ... isn't pressed, this prevents repeated calls to open and close the wing
 	if (!l1) {
 		endFlag = true;
 	}
@@ -199,7 +205,14 @@ void endgameSet(bool state){
 //==================================================//
 
 void turnTo(float deg, float speed, int timeout){
+    // using trig to turn a degree into a point that is far away from the bot in...
+    // ... order to remove the need for odometry
 	chassis.turnTo(sin(deg * (PI/180))*1000, cos(deg * (PI/180))*1000, timeout, false, speed);
+}
+void turnTo(float deg){
+    // using trig to turn a degree into a point that is far away from the bot in...
+    // ... order to remove the need for odometry
+	chassis.turnTo(sin(deg * (PI/180))*1000, cos(deg * (PI/180))*1000, 5000, false, 127);
 }
 
 void screen() {
@@ -210,20 +223,24 @@ void screen() {
         pros::lcd::print(1, "y: %f", pose.y); // print the y position
         pros::lcd::print(2, "heading: %f", pose.theta); // print the heading
 
-        pros::delay(10);
+        pros::delay(10); // saves memory
     }
 }
 
 void initialize() {
-	pros::lcd::initialize();
+	pros::lcd::initialize(); 
 	pros::lcd::set_text(1, "5150 HAVOC");
 
-	chassis.calibrate();
-	chassis.setPose(0, 0, 0);
+    selector::init();
+
+	chassis.calibrate(); // using this for auton
+	chassis.setPose(0, 0, 0); // sets the origin to where we place the bot
 
 	pros::Task screenTask(screen);
+
 }
 
+/* diasbled & competition_initialize
 void disabled() {
 
 }
@@ -231,29 +248,32 @@ void disabled() {
 void competition_initialize() {
 
 }
+*/
 
 void autonomous() {
-    chassis.turnTo(10000, 0, 5000, false);   // pid
-	// turnTo(90, 127, 5000);                   // my function
+    // turnTo(90, 127, 5000);
+    // points generated with https://5150vex.github.io/path.jerryio/
 
-    // drive    forward     1200
-    // drive    reverse     800
+    /*
+    // LEFT SIDE AUTON
+    chassis.moveTo(0, 0, 5000);
+    chassis.moveTo(18.116, 15.985, 5000);
+    chassis.moveTo(28.773, 15.985, 2000);
+    chassis.moveTo(0, -8.312, 5000);
+    chassis.moveTo(2, -33, 5000);
 
-    // turn     right       360
-
-    // drive    reverse     900
-    // drive    forward     400
-
-    // wait     seconds     0.5
-
-    // drive    reverse     500
-    // drive    forward     800
-
-    // turn     right       360
-
-    // drive    reverse     1000
-    // turn     left        100
-    // drive    reverse     1300
+    // RIGHT SIDE AUTON
+    chassis.moveTo(0, 0, 5000);
+    chassis.moveTo(-29.257, 20.144, 2000);
+    chassis.moveTo(-0.24, -6.955, 5000);
+    chassis.moveTo(-0.719, -33.814, 5000);
+    */
+    if(selector::auton == 1){
+        turnTo(90);
+    }
+    if(selector::auton == 2){
+        turnTo(-90);
+    }
 }
 
 void opcontrol() {
@@ -272,7 +292,20 @@ void opcontrol() {
 		endgameControl();
 		intakeControl();
 
-        // lag is real. this prevents it.
+        //saves a bit of memory
+        // there is less waiting because this void manages drive code and we cant have...
+        // ... input delay
         pros::delay(5);
     }
 }
+
+/*
+
+  ／|、
+（ﾟ､ ｡７
+ |、ﾞ~ヽ
+ じしf._)ノ 
+ 
+ her name is soy sauce
+ 
+*/
