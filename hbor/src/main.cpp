@@ -6,7 +6,7 @@
 #include <string>
 
 //==================================================// Red   : 36
-// PHYSICAL OBJECTS INITS 		               		// Green : 12
+// PHYSICAL OBJECTS INITS 		               		// Green : 18
 //==================================================// Blue  : 06
 
 pros::Controller controller(pros::E_CONTROLLER_MASTER); // controller setup
@@ -14,7 +14,8 @@ pros::Controller controller(pros::E_CONTROLLER_MASTER); // controller setup
 pros::ADIDigitalOut wing ('g', false); // wing setup
 pros::ADIDigitalOut endgame ('h', false); // endgame setup
 
-pros::Motor cata(20, pros::E_MOTOR_GEARSET_36, true, pros::E_MOTOR_ENCODER_DEGREES); // cata motor
+pros::Motor cata1(20, pros::E_MOTOR_GEARSET_18, true, pros::E_MOTOR_ENCODER_DEGREES); // cata motor
+pros::Motor cata2(10, pros::E_MOTOR_GEARSET_18, false, pros::E_MOTOR_ENCODER_DEGREES); // cata motor
 pros::Motor intakeMotor(2, pros::E_MOTOR_GEARSET_36, false, pros::E_MOTOR_ENCODER_DEGREES); // intake motor
 
 // drivebase setup
@@ -28,6 +29,7 @@ pros::Motor rBmotor(6, pros::E_MOTOR_GEARSET_06, true, pros::E_MOTOR_ENCODER_DEG
 // the left and right side of the robot respectively
 pros::MotorGroup left({lFmotor, lBmotor});
 pros::MotorGroup right({rFmotor, rBmotor});
+pros::MotorGroup cata({cata1, cata2});
 
 // setting up the drivebase so i can call move commands in order to move and turn the entire bot
 lemlib::Drivetrain_t drivetrain {
@@ -89,6 +91,8 @@ bool wingFlag = true;
 bool wingState = false;
 bool endFlag = true;
 bool endState = false;
+bool cataFlag = true;
+bool cataState = false;
 const double PI = 3.14159;
 
 //==================================================//
@@ -96,18 +100,46 @@ const double PI = 3.14159;
 //==================================================//
 
 //==================================================//
+// v v v TIME STUFF                           v v v //
+void moveFor(pros::MotorGroup& motorgroup, int milliseconds, int voltage){
+    int start = pros::millis();
+    while((pros::millis() - start) <= milliseconds){
+        motorgroup.move(voltage);
+    }
+}
+
+void moveFor(pros::Motor motor, int milliseconds, int voltage){
+    int start = pros::millis();
+    while((pros::millis() - start) <= milliseconds){
+        motor.move(voltage);
+    }
+}
+// ^ ^ ^ TIME STUFF                           ^ ^ ^ //
+//==================================================//
+
+//==================================================//
 // v v v CATA CONTROLS                        v v v //
 void cataControl(){
     // define the right two bumpers and triggers on the controller as booleans
-	bool r1 = controller.get_digital(pros::E_CONTROLLER_DIGITAL_R1);
 	bool r2 = controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2);
+    
+    // setting up a toggle for the wing
+	if (cataFlag && r2) {
+		cataFlag = false;
+        if (cataState){
+            cataState = false;
+		    cata.move(0);
+        } else {
+            cataState = true;
+            cata.move(127);
+        }
+	}
 
-	if (r2){
-		cata.move(127);
-	} else if (r1) {
-		cata.move(64);
-    } else {
-		cata.brake();
+    // the magic of the toggle function
+    // the wingFlag, once set to false, will only set to true again if the A button...
+    // ... isn't pressed, this prevents repeated calls to open and close the wing
+	if (!r2) {
+		cataFlag = true;
 	}
 };
 // ^ ^ ^ CATA CONTROLS                        ^ ^ ^ //
@@ -219,10 +251,17 @@ void screen() {
     // loop forever
     while (true) {
         lemlib::Pose pose = chassis.getPose(); // get the current position of the robot
+        
         pros::lcd::print(0, "x: %f", pose.x); // print the x position
         pros::lcd::print(1, "y: %f", pose.y); // print the y position
         pros::lcd::print(2, "heading: %f", pose.theta); // print the heading
-
+        
+        /*
+        std::cout << ("x: " + std::to_string(pose.x)) << std::endl;
+        std::cout << ("y: " + std::to_string(pose.y)) << std::endl;
+        std::cout << ("heading: " + std::to_string(pose.theta)) << std::endl;
+        */
+        
         pros::delay(10); // saves memory
     }
 }
@@ -253,26 +292,36 @@ void competition_initialize() {
 void autonomous() {
     // turnTo(90, 127, 5000);
     // points generated with https://5150vex.github.io/path.jerryio/
+	chassis.setPose(0, 0, 0); // sets the origin to where we place the bot
 
-    /*
-    // LEFT SIDE AUTON
-    chassis.moveTo(0, 0, 5000);
-    chassis.moveTo(18.116, 15.985, 5000);
-    chassis.moveTo(28.773, 15.985, 2000);
-    chassis.moveTo(0, -8.312, 5000);
-    chassis.moveTo(2, -33, 5000);
-
-    // RIGHT SIDE AUTON
-    chassis.moveTo(0, 0, 5000);
-    chassis.moveTo(-29.257, 20.144, 2000);
-    chassis.moveTo(-0.24, -6.955, 5000);
-    chassis.moveTo(-0.719, -33.814, 5000);
-    */
-    if(selector::auton == 1){
-        turnTo(90);
+    if(selector::auton == 1){ // RED CLOSE
+        pros::delay(1000);
+        chassis.moveTo(0, 0, 5000);
+        chassis.moveTo(14.868, 11.031, 5000);
+        chassis.moveTo(29.257, 11.751, 1200);
+        chassis.moveTo(-0.959, -4.317, 5000);
+        chassis.moveTo(-0.959, -35.212, 5000);
     }
-    if(selector::auton == 2){
-        turnTo(-90);
+    if(selector::auton == 2){ // RED FAR
+        pros::delay(1000);
+        chassis.moveTo(0, 0, 5000);
+        chassis.moveTo(-20.624, 26.859, 5000);
+        chassis.moveTo(-48.442, 30.216, 1200);
+        chassis.moveTo(-11.271, 10.792, 5000);
+        //chassis.moveTo(-5.036, -32.375, 5000);
+    }
+    if(selector::auton == 0){ //skills?
+        moveFor(cata, 50000, 127);
+        
+        chassis.moveTo(0, 0, 5000);
+        chassis.moveTo(22.749, 29.454, 5000);
+        chassis.moveTo(22.27, 106.561, 5000);
+
+        // "The bot moved back and forth, motions fluid and hypnotic."
+        while(true){
+            chassis.moveTo(1.916, 122.126, 5000);
+            chassis.moveTo(-10.297, 122.126, 1200);
+        }
     }
 }
 
