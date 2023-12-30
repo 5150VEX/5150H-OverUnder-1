@@ -13,6 +13,7 @@ pros::Controller controller(pros::E_CONTROLLER_MASTER); // controller setup
 
 pros::ADIDigitalOut wing ('g', false); // wing setup
 pros::ADIDigitalOut endgame ('h', false); // endgame setup
+pros::ADIDigitalOut blocker ('b', false); // blocker setup
 
 pros::Motor cata1(20, pros::E_MOTOR_GEARSET_18, true, pros::E_MOTOR_ENCODER_DEGREES); // cata motor
 pros::Motor cata2(10, pros::E_MOTOR_GEARSET_18, false, pros::E_MOTOR_ENCODER_DEGREES); // cata motor
@@ -89,10 +90,16 @@ lemlib::Chassis chassis(drivetrain, lateralController, angularController,sensors
 
 bool wingFlag = true;
 bool wingState = false;
+
 bool endFlag = true;
 bool endState = false;
+
 bool cataFlag = true;
 bool cataState = false;
+
+bool blockerFlag = true;
+bool blockerState = false;
+
 const double PI = 3.14159;
 
 //==================================================//
@@ -100,31 +107,48 @@ const double PI = 3.14159;
 //==================================================//
 
 //==================================================//
-// v v v TIME STUFF                           v v v //
+// v v v AUTO STUFF                           v v v //
+void turnTo(float deg, float speed, int timeout){
+    // using trig to turn a degree into a point that is far away from the bot in...
+    // ... order to remove the need for odometry
+	chassis.turnTo(sin(deg * (PI/180))*1000, cos(deg * (PI/180))*1000, timeout, false, speed);
+}
+void turnTo(float deg){
+    // using trig to turn a degree into a point that is far away from the bot in...
+    // ... order to remove the need for odometry
+	chassis.turnTo(sin(deg * (PI/180))*1000, cos(deg * (PI/180))*1000, 1200, false, 127);
+}
+
 void moveFor(pros::MotorGroup& motorgroup, int milliseconds, int voltage){
     int start = pros::millis();
     while((pros::millis() - start) <= milliseconds){
         motorgroup.move(voltage);
     }
+    motorgroup.move(0);
 }
-
 void moveFor(pros::Motor motor, int milliseconds, int voltage){
     int start = pros::millis();
     while((pros::millis() - start) <= milliseconds){
         motor.move(voltage);
     }
+    motor.move(0);
 }
-// ^ ^ ^ TIME STUFF                           ^ ^ ^ //
+
+void setOrigin(){
+    chassis.setPose(0, 0, 0); // sets the origin to where we place the bot
+}
+// ^ ^ ^ AUTO STUFF                           ^ ^ ^ //
 //==================================================//
 
 //==================================================//
 // v v v CATA CONTROLS                        v v v //
-void cataControl(){
+void cataControlToggle(){
     // define the right two bumpers and triggers on the controller as booleans
+	bool r1 = controller.get_digital(pros::E_CONTROLLER_DIGITAL_R1);
 	bool r2 = controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2);
     
     // setting up a toggle for the wing
-	if (cataFlag && r2) {
+	if (cataFlag && r1) { // if r1 is pressed
 		cataFlag = false;
         if (cataState){
             cataState = false;
@@ -135,12 +159,27 @@ void cataControl(){
         }
 	}
 
+    if (r2) { // if r2 is held
+        cata.move(127);
+    }
+
     // the magic of the toggle function
     // the wingFlag, once set to false, will only set to true again if the A button...
     // ... isn't pressed, this prevents repeated calls to open and close the wing
-	if (!r2) {
+	if (!r1) {
 		cataFlag = true;
 	}
+};
+void cataControl(){
+    // define the right two bumpers and triggers on the controller as booleans
+	bool r2 = controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2);
+    
+    if (r2) { // if r2 is held
+        cata.move(127);
+    }
+    else {
+        cata.move(0);
+    }
 };
 // ^ ^ ^ CATA CONTROLS                        ^ ^ ^ //
 //==================================================//
@@ -236,16 +275,32 @@ void endgameSet(bool state){
 // ^ ^ ^ ENDGAME CONTROLS                     ^ ^ ^ //
 //==================================================//
 
-void turnTo(float deg, float speed, int timeout){
-    // using trig to turn a degree into a point that is far away from the bot in...
-    // ... order to remove the need for odometry
-	chassis.turnTo(sin(deg * (PI/180))*1000, cos(deg * (PI/180))*1000, timeout, false, speed);
-}
-void turnTo(float deg){
-    // using trig to turn a degree into a point that is far away from the bot in...
-    // ... order to remove the need for odometry
-	chassis.turnTo(sin(deg * (PI/180))*1000, cos(deg * (PI/180))*1000, 5000, false, 127);
-}
+//==================================================//
+// v v v BLOCKER CONTROLS                     v v v //
+void blockerControl(){
+	bool bb = controller.get_digital(pros::E_CONTROLLER_DIGITAL_B);
+
+    // setting up a toggle for the hanger
+	if (blockerFlag && bb) {
+		blockerFlag = false;
+
+        if (blockerState){
+            blockerState = false;
+		    blocker.set_value(false);
+        } else {
+            blockerState = true;
+            blocker.set_value(true);
+        }
+	}
+
+    // the blockerFlag, once set to false, will only set to true again if the left bumper...
+    // ... isn't pressed, this prevents repeated calls to open and close the wing
+	if (!bb) {
+		blockerFlag = true;
+	}
+};
+// ^ ^ ^ BLOCKER CONTROLS                     ^ ^ ^ //
+//==================================================//
 
 void screen() {
     // loop forever
@@ -292,36 +347,92 @@ void competition_initialize() {
 void autonomous() {
     // turnTo(90, 127, 5000);
     // points generated with https://5150vex.github.io/path.jerryio/
-	chassis.setPose(0, 0, 0); // sets the origin to where we place the bot
+	setOrigin(); // sets the origin to where we place the bot
 
     if(selector::auton == 1){ // RED CLOSE
-        pros::delay(1000);
+        //pros::delay(500);
         chassis.moveTo(0, 0, 5000);
         chassis.moveTo(14.868, 11.031, 5000);
-        chassis.moveTo(29.257, 11.751, 1200);
+        chassis.moveTo(27.257, 11.751, 1200); // RAM!!!!
+        chassis.moveTo(14.868, 11.031, 2500);
+
+        //chassis.moveTo(14.149, 3.717, 5000);
+        
+        wing.set_value(true);
         chassis.moveTo(-0.959, -4.317, 5000);
-        chassis.moveTo(-0.959, -35.212, 5000);
+        //pros::delay(500);
+        wing.set_value(false);
+        
+        chassis.moveTo(14.868, 11.031, 2500);
+        chassis.moveTo(-0.959, -4.317, 5000);
+
+        chassis.moveTo(-0.959, -34.712, 5000);
     }
     if(selector::auton == 2){ // RED FAR
-        pros::delay(1000);
+        setOrigin();
+        left = 127;
+        right = 127;
+        pros::delay(2000);
+        left = 0;
+        right = 0;
+    /*
+        pros::delay(500);
         chassis.moveTo(0, 0, 5000);
         chassis.moveTo(-20.624, 26.859, 5000);
         chassis.moveTo(-48.442, 30.216, 1200);
-        chassis.moveTo(-11.271, 10.792, 5000);
+        chassis.moveTo(-11.271, 30.216, 5000);
         //chassis.moveTo(-5.036, -32.375, 5000);
+    */
     }
     if(selector::auton == 0){ //skills?
-        moveFor(cata, 50000, 127);
-        
-        chassis.moveTo(0, 0, 5000);
-        chassis.moveTo(22.749, 29.454, 5000);
-        chassis.moveTo(22.27, 106.561, 5000);
+        /* get silly ;P
+        int* important = (int*)malloc;
+        *important = 0;
+        */
 
-        // "The bot moved back and forth, motions fluid and hypnotic."
-        while(true){
-            chassis.moveTo(1.916, 122.126, 5000);
-            chassis.moveTo(-10.297, 122.126, 1200);
+        // move to match loader
+        chassis.moveTo(13.000, 13.000, 5000);
+        turnTo(180);
+
+        // get ready to shoot
+        setOrigin();
+        wingSet(true);
+        chassis.moveTo(0.000, -6.000, 1000);
+        turnTo(-15);
+
+        // shoot and reset
+        moveFor(cata, 40000, 127); // 35000
+        
+        wingSet(false);
+        chassis.moveTo(0, 0, 5000);
+        turnTo(0);
+
+        // line up for opposite side
+        setOrigin();
+        chassis.moveTo(16.000, 16.000, 5000);
+        turnTo(0);
+
+        // go to other side for ram
+        setOrigin();
+        chassis.moveTo(0.000, 72.000, 5000);
+        chassis.moveTo(-18.000, 90.000, 5000);
+        chassis.moveTo(-76.000, 60.000, 5000);
+        turnTo(0);
+
+        // ram.
+        int x = 0;
+        setOrigin();
+        wingSet(true);
+
+        while(x <= 2){
+            // back and forth
+            chassis.moveTo(0, 360.000, 700);
+            chassis.moveTo(0, 12.000, 700);
+            turnTo(0);
+            x++;
         }
+        wingSet(false);
+        
     }
 }
 
@@ -340,8 +451,9 @@ void opcontrol() {
 		wingControl();
 		endgameControl();
 		intakeControl();
+		blockerControl();
 
-        //saves a bit of memory
+        // saves a bit of memory
         // there is less waiting because this void manages drive code and we cant have...
         // ... input delay
         pros::delay(5);
