@@ -12,8 +12,8 @@
 pros::Controller controller(pros::E_CONTROLLER_MASTER); // controller setup
 
 pros::ADIDigitalOut wing ('g', false); // wing setup
-pros::ADIDigitalOut endgame ('h', false); // endgame setup
-pros::ADIDigitalOut blocker ('b', false); // blocker setup
+//pros::ADIDigitalOut endgame ('h', false); // endgame setup
+pros::ADIDigitalOut blocker ('h', false); // blocker setup
 
 pros::Motor cata1(20, pros::E_MOTOR_GEARSET_18, true, pros::E_MOTOR_ENCODER_DEGREES); // cata motor
 pros::Motor cata2(10, pros::E_MOTOR_GEARSET_18, false, pros::E_MOTOR_ENCODER_DEGREES); // cata motor
@@ -155,12 +155,12 @@ void cataControlToggle(){
 		    cata.move(0);
         } else {
             cataState = true;
-            cata.move(127);
+            cata.move(32);
         }
 	}
 
     if (r2) { // if r2 is held
-        cata.move(127);
+        cata.move(16);
     }
 
     // the magic of the toggle function
@@ -175,7 +175,7 @@ void cataControl(){
 	bool r2 = controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2);
     
     if (r2) { // if r2 is held
-        cata.move(127);
+        cata.move(96);
     }
     else {
         cata.move(0);
@@ -188,16 +188,16 @@ void cataControl(){
 // v v v INTAKE CONTROLS                      v v v //
 void intakeControl(){
     // declares the up and down buttons on the controller as booleans (one for intake and one for outtake)
-	bool bUp = controller.get_digital(pros::E_CONTROLLER_DIGITAL_UP);
-	bool bDown = controller.get_digital(pros::E_CONTROLLER_DIGITAL_DOWN);
+	bool bL1 = controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1);
+	bool bL2 = controller.get_digital(pros::E_CONTROLLER_DIGITAL_L2);
     
     // define a speed for the intake roller
     int intakeSpeed = 64;
 
     // if the up arrow is pressed, intake. if the down button is pressed, outtake. else, stop the motor from turning.
-	if (bUp){ // intake
+	if (bL2){ // intake
 		intakeMotor.move(-intakeSpeed);
-	} else if (bDown) { // outtake
+	} else if (bL1) { // outtake
 		intakeMotor.move(intakeSpeed);
     } else {
 		intakeMotor.brake();
@@ -245,33 +245,35 @@ void wingSet(bool state){
 
 //==================================================//
 // v v v ENDGAME CONTROLS                     v v v //
-void endgameControl(){
-	bool l1 = controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1);
+    /*
+    void endgameControl(){
+    	bool l1 = controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1);
 
-    // setting up a toggle for the hanger
-	if (endFlag && l1) {
-		endFlag = false;
+        // setting up a toggle for the hanger
+    	if (endFlag && l1) {
+    		endFlag = false;
 
-        if (endState){
-            endState = false;
-		    endgame.set_value(false);
-        } else {
-            endState = true;
-            endgame.set_value(true);
-        }
-	}
+            if (endState){
+                endState = false;
+    		    endgame.set_value(false);
+            } else {
+                endState = true;
+                endgame.set_value(true);
+            }
+    	}
 
-    // the endFlag, once set to false, will only set to true again if the left bumper...
-    // ... isn't pressed, this prevents repeated calls to open and close the wing
-	if (!l1) {
-		endFlag = true;
-	}
-};
+        // the endFlag, once set to false, will only set to true again if the left bumper...
+        // ... isn't pressed, this prevents repeated calls to open and close the wing
+    	if (!l1) {
+    		endFlag = true;
+    	}
+    };
 
-void endgameSet(bool state){
-    endgame.set_value(state);
-    endState = state;
-};
+    void endgameSet(bool state){
+        endgame.set_value(state);
+        endState = state;
+    };
+    */
 // ^ ^ ^ ENDGAME CONTROLS                     ^ ^ ^ //
 //==================================================//
 
@@ -384,6 +386,52 @@ void autonomous() {
         //chassis.moveTo(-5.036, -32.375, 5000);
     */
     }
+    if(selector::auton == 3){ // RED NO-OP
+
+    }
+    if(selector::auton == -1){ // BLUE CLOSE
+        //pros::delay(500);
+        // matchload into the goal
+        chassis.moveTo(0, 0, 5000);
+        chassis.moveTo(0, 48, 5000);
+        turnTo(-90);
+        outtake(127);
+        pros::delay(500);
+        outtake(0);
+
+        setOrigin();
+        
+        // grab first middle triball
+        chassis.moveTo(-12, 0, 5000);
+        turnTo(90);
+        intake(127);
+        setOrigin();
+        chassis.moveTo(0, 12, 5000);
+        chassis.moveTo(0, 0, 5000);
+        turnTo(180);
+        
+        setOrigin();
+
+        // outtake first triball
+        outtake(127);
+        chassis.moveTo(24, 0, 2000);
+        outtake(0);
+        chassis.moveTo(0, 0, 5000);
+
+        // match loader triball
+        chassis.moveTo(-36, 24, 5000);
+        wingSet(true);
+        chassis.moveTo(-24, 36, 5000);
+        wingSet(false);
+        chassis.moveTo(20, 36, 5000);
+    }
+    if(selector::auton == -2){ // BLUE FAR
+        //pros::delay(500);
+        
+    }
+    if(selector::auton == -3){ // BLUE NO-OP
+    
+    }
     if(selector::auton == 0){ //skills?
         /* get silly ;P
         int* important = (int*)malloc;
@@ -401,7 +449,8 @@ void autonomous() {
         turnTo(-15);
 
         // shoot and reset
-        moveFor(cata, 40000, 127); // 35000
+        // moveFor(cata, 40000, 127); // 35000
+        moveFor(cata, 1000, 127); // 35000
         
         wingSet(false);
         chassis.moveTo(0, 0, 5000);
@@ -409,7 +458,7 @@ void autonomous() {
 
         // line up for opposite side
         setOrigin();
-        chassis.moveTo(16.000, 16.000, 5000);
+        chassis.moveTo(16.000, 16.000, 2000);
         turnTo(0);
 
         // go to other side for ram
@@ -449,7 +498,7 @@ void opcontrol() {
         // allows the voids to do their things (without this, the macros would not work)
 		cataControl();
 		wingControl();
-		endgameControl();
+		// endgameControl();
 		intakeControl();
 		blockerControl();
 
