@@ -175,7 +175,7 @@ void cataControl(){
 	bool r2 = controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2);
     
     if (r2) { // if r2 is held
-        cata.move(96);
+        cata.move(127);
     }
     else {
         cata.move(0);
@@ -355,7 +355,7 @@ void autonomous() {
         //pros::delay(500);
         chassis.moveTo(0, 0, 5000);
         chassis.moveTo(14.868, 11.031, 5000);
-        chassis.moveTo(27.257, 11.751, 1200); // RAM!!!!
+        chassis.moveTo(24.257, 11.751, 1200); // RAM!!!!
         chassis.moveTo(14.868, 11.031, 2500);
 
         //chassis.moveTo(14.149, 3.717, 5000);
@@ -369,12 +369,19 @@ void autonomous() {
         chassis.moveTo(-0.959, -4.317, 5000);
 
         chassis.moveTo(-0.959, -34.712, 5000);
+        
     }
     if(selector::auton == 2){ // RED FAR
         setOrigin();
         left = 127;
         right = 127;
-        pros::delay(2000);
+        pros::delay(1000);
+        left = 0;
+        right = 0;
+        pros::delay(1000);
+        left = -127;
+        right = -127;
+        pros::delay(500);
         left = 0;
         right = 0;
     /*
@@ -449,8 +456,8 @@ void autonomous() {
         turnTo(-15);
 
         // shoot and reset
-        // moveFor(cata, 40000, 127); // 35000
-        moveFor(cata, 1000, 127); // 35000
+        moveFor(cata, 35000, 96); // 35000
+        // moveFor(cata, 1000, 127); // 35000
         
         wingSet(false);
         chassis.moveTo(0, 0, 5000);
