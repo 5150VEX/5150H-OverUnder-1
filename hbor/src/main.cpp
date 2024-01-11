@@ -348,7 +348,7 @@ void competition_initialize() {
 
 void autonomous() {
     // turnTo(90, 127, 5000);
-    // points generated with https://5150vex.github.io/path.jerryio/
+    // most points generated with https://5150vex.github.io/path.jerryio/
 	setOrigin(); // sets the origin to where we place the bot
 
     if(selector::auton == 1){ // RED CLOSE
