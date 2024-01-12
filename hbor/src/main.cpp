@@ -12,7 +12,7 @@
 pros::Controller controller(pros::E_CONTROLLER_MASTER); // controller setup
 
 pros::ADIDigitalOut wing ('g', false); // wing setup
-//pros::ADIDigitalOut endgame ('h', false); // endgame setup
+pros::ADIDigitalOut endgame ('a', false); // endgame setup
 pros::ADIDigitalOut blocker ('h', false); // blocker setup
 
 pros::Motor cata1(20, pros::E_MOTOR_GEARSET_18, true, pros::E_MOTOR_ENCODER_DEGREES); // cata motor
@@ -99,6 +99,9 @@ bool cataState = false;
 
 bool blockerFlag = true;
 bool blockerState = false;
+
+bool endgameFlag = true;
+bool endgameState = false;
 
 const double PI = 3.14159;
 
@@ -304,6 +307,33 @@ void blockerControl(){
 // ^ ^ ^ BLOCKER CONTROLS                     ^ ^ ^ //
 //==================================================//
 
+//==================================================//
+// v v v ENDGAME CONTROLS                     v v v //
+void endgameControl(){
+	bool bX = controller.get_digital(pros::E_CONTROLLER_DIGITAL_A);
+
+    // setting up a toggle for the hanger
+	if (endgameFlag && bX) {
+		endgameFlag = false;
+
+        if (endgameState){
+            endgameState = false;
+		    endgame.set_value(false);
+        } else {
+            endgameState = true;
+            endgame.set_value(true);
+        }
+	}
+
+    // the blockerFlag, once set to false, will only set to true again if the left bumper...
+    // ... isn't pressed, this prevents repeated calls to open and close the wing
+	if (!bX ) {
+		endgameFlag = true;
+	}
+};
+// ^ ^ ^ ENDGAME CONTROLS                     ^ ^ ^ //
+//==================================================//
+
 void screen() {
     // loop forever
     while (true) {
@@ -397,44 +427,61 @@ void autonomous() {
 
     }
     if(selector::auton == -1){ // BLUE CLOSE
-        //pros::delay(500);
         // matchload into the goal
         chassis.moveTo(0, 0, 5000);
         chassis.moveTo(0, 48, 5000);
-        turnTo(-90);
-        outtake(127);
-        pros::delay(500);
-        outtake(0);
-
-        setOrigin();
-        
-        // grab first middle triball
-        chassis.moveTo(-12, 0, 5000);
         turnTo(90);
-        intake(127);
+        
         setOrigin();
-        chassis.moveTo(0, 12, 5000);
+        
+        wingSet(true);
+        chassis.moveTo(0, 36, 1200);
+        wingSet(false);
+        chassis.moveTo(0, 0, 1200);
+
+        outtake(127);
+        pros::delay(1000);
+        outtake(0);
+        
+        chassis.moveTo(0, -6, 1200);
         chassis.moveTo(0, 0, 5000);
-        turnTo(180);
+        turnTo(90);
+        
+        setOrigin();
+        
+        chassis.moveTo(0, 48, 5000);
+        turnTo(-90);
         
         setOrigin();
 
-        // outtake first triball
-        outtake(127);
-        chassis.moveTo(24, 0, 2000);
-        outtake(0);
-        chassis.moveTo(0, 0, 5000);
-
-        // match loader triball
-        chassis.moveTo(-36, 24, 5000);
-        wingSet(true);
-        chassis.moveTo(-24, 36, 5000);
-        wingSet(false);
-        chassis.moveTo(20, 36, 5000);
+        chassis.moveTo(0, 30, 5000);
     }
     if(selector::auton == -2){ // BLUE FAR
         //pros::delay(500);
+        chassis.moveTo(0, 0, 5000);
+        intake(127);
+        chassis.moveTo(0, 6, 5000);
+        pros::delay(1000);
+        chassis.moveTo(0, -24, 5000);
+        turnTo(90);
+
+        setOrigin();
+
+        chassis.moveTo(0, 48, 5000);
+        turnTo(-90);
         
+        setOrigin();
+
+        chassis.moveTo(0, 48, 5000);
+        wingSet(true);
+        chassis.moveTo(0, -6, 5000);
+        chassis.moveTo(0, 12, 5000);
+        turnTo(180);
+
+        setOrigin();
+        
+        chassis.moveTo(0, 12, 1200);
+        chassis.moveTo(0, 0, 5000);
     }
     if(selector::auton == -3){ // BLUE NO-OP
     
@@ -505,7 +552,7 @@ void opcontrol() {
         // allows the voids to do their things (without this, the macros would not work)
 		cataControl();
 		wingControl();
-		// endgameControl();
+		endgameControl();
 		intakeControl();
 		blockerControl();
 
