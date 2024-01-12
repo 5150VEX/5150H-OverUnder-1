@@ -207,10 +207,10 @@ void intakeControl(){
 	}
 };
 void intake(int speed){
-    intakeMotor.move_relative(90, speed);
+    intakeMotor.move(speed);
 };
 void outtake(int speed){
-    intakeMotor.move_relative(-90, speed);
+intakeMotor.move(-speed);
 };
 // ^ ^ ^ INTAKE CONTROLS                      ^ ^ ^ //
 //==================================================//
@@ -427,7 +427,6 @@ void autonomous() {
 
     }
     if(selector::auton == -1){ // BLUE CLOSE
-        // matchload into the goal
         chassis.moveTo(0, 0, 5000);
         chassis.moveTo(0, 48, 5000);
         turnTo(90);
@@ -449,21 +448,25 @@ void autonomous() {
         
         setOrigin();
         
+        //  bininging
         chassis.moveTo(0, 48, 5000);
+        wingSet(true);
         turnTo(-90);
+        wingSet(false);
         
         setOrigin();
 
         chassis.moveTo(0, 30, 5000);
     }
-    if(selector::auton == -2){ // BLUE FAR
+    if(selector::auton == -2){ // BLUE FAR (no workey)
         //pros::delay(500);
         chassis.moveTo(0, 0, 5000);
         intake(127);
-        chassis.moveTo(0, 6, 5000);
+        chassis.moveTo(0, -6, 5000);
         pros::delay(1000);
-        chassis.moveTo(0, -24, 5000);
-        turnTo(90);
+        intake(0);
+        chassis.moveTo(0, 24, 5000);
+        turnTo(-90);
 
         setOrigin();
 
