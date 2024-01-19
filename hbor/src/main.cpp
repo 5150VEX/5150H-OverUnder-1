@@ -33,12 +33,13 @@ pros::MotorGroup right({rFmotor, rBmotor});
 pros::MotorGroup cata({cata1, cata2});
 
 // setting up the drivebase so i can call move commands in order to move and turn the entire bot
-lemlib::Drivetrain_t drivetrain {
+lemlib::Drivetrain drivetrain {
     &left, // left drivetrain motors
     &right, // right drivetrain motors
     12, // track width
     3.25, // wheel diameter
-    360 // wheel rpm
+    360, // wheel rpm
+    0
 };
 
 // inertial sensor
@@ -48,7 +49,7 @@ pros::Imu gyro(16);
 // odometry struct
 // sets up the "odometry wheels" and the inertial sensor...
 // though we dont use odometry so we declare the wheels as null
-lemlib::OdomSensors_t sensors {
+lemlib::OdomSensors sensors {
 	nullptr, // vertical tracking wheel 1
     nullptr, // vertical tracking wheel 2
     nullptr, // horizontal tracking wheel 1
@@ -58,26 +59,31 @@ lemlib::OdomSensors_t sensors {
 
 // forward/backward PID
 // forward backward pid for smooth lateral movment
-lemlib::ChassisController_t lateralController {
-    8, // kP
-    64, // kD
-    1, // smallErrorRange
-    100, // smallErrorTimeout
-    2, // largeErrorRange
-    500, // largeErrorTimeout
-    5 // slew rate
+lemlib::ControllerSettings lateralController {
+    8,
+    0,
+    64,
+    0,
+    1,
+    100,
+    2,
+    500,
+    5
 };
 
 // turning PID
 // left and right pid for smooth turning
-lemlib::ChassisController_t angularController {
-    .kP = -8, // kP 0.75
-    .kD = -64, // kD 64
-    .smallError = 0.5, // smallErrorRange
-    .smallErrorTimeout = 100, // smallErrorTimeout
-    .largeError = 1, // largeErrorRange
-    .largeErrorTimeout = 500, // largeErrorTimeout
-    .slew = 5
+lemlib::ControllerSettings angularController {
+    -8,
+    0,
+    -64,
+    0,
+    0.5,
+    100,
+    1,
+    500,
+    5
+ 
 };
 	
 // create the chassis
@@ -387,39 +393,39 @@ void autonomous() {
 	setOrigin(); // sets the origin to where we place the bot
 
     if(selector::auton == 1){ // RED CLOSE GOOD
-        chassis.moveTo(0, 0, 5000);
-        chassis.moveTo(0, 51, 5000); // 48
+        chassis.moveToPoint(0, 0, 5000);
+        chassis.moveToPoint(0, 51, 5000); // 48
         turnTo(90);
         
         setOrigin();
         
         wingSet(true);
-        chassis.moveTo(0, 39, 1000); // 36
+        chassis.moveToPoint(0, 39, 1000); // 36
         wingSet(false);
         outtake(127);
-        //chassis.moveTo(0, 0, 1000);
-        chassis.moveTo(0, -6, 1000);
-        chassis.moveTo(0, 3, 5000); // 0, 3
+        //chassis.moveToPoint(0, 0, 1000);
+        chassis.moveToPoint(0, -6, 1000);
+        chassis.moveToPoint(0, 3, 5000); // 0, 3
         outtake(0);
         turnTo(90);
         
         setOrigin();
         
         //  bininging
-        chassis.moveTo(0, 24, 5000);
-        chassis.moveTo(16, 28, 1200); // 18, 30 (originally 12, 24)
+        chassis.moveToPoint(0, 24, 5000);
+        chassis.moveToPoint(16, 28, 1200); // 18, 30 (originally 12, 24)
         turnTo(-40); // 45
         
         setOrigin();
         
         wingSet(true);
-        chassis.moveTo(0,22, 1200);
+        chassis.moveToPoint(0,22, 1200);
         wingSet(false);
         turnTo(-50); // 45
         
         setOrigin();
 
-        chassis.moveTo(0, 31, 5000); // 31
+        chassis.moveToPoint(0, 31, 5000); // 31
     }
     if(selector::auton == 2){ // RED FAR
         setOrigin();
@@ -436,11 +442,11 @@ void autonomous() {
         right = 0;
     /*
         pros::delay(500);
-        chassis.moveTo(0, 0, 5000);
-        chassis.moveTo(-20.624, 26.859, 5000);
-        chassis.moveTo(-48.442, 30.216, 1200);
-        chassis.moveTo(-11.271, 30.216, 5000);
-        //chassis.moveTo(-5.036, -32.375, 5000);
+        chassis.moveToPoint(0, 0, 5000);
+        chassis.moveToPoint(-20.624, 26.859, 5000);
+        chassis.moveToPoint(-48.442, 30.216, 1200);
+        chassis.moveToPoint(-11.271, 30.216, 5000);
+        //chassis.moveToPoint(-5.036, -32.375, 5000);
     */
     }
     if(selector::auton == 3){ // RED NO-OP
@@ -448,46 +454,46 @@ void autonomous() {
     }
     if(selector::auton == -1){ // BLUE CLOSE
         //pros::delay(500);
-        chassis.moveTo(0, 0, 5000);
-        chassis.moveTo(14.868, 11.031, 5000);
-        chassis.moveTo(24.257, 11.751, 1200); // RAM!!!!
-        chassis.moveTo(14.868, 11.031, 2500);
+        chassis.moveToPoint(0, 0, 5000);
+        chassis.moveToPoint(14.868, 11.031, 5000);
+        chassis.moveToPoint(24.257, 11.751, 1200); // RAM!!!!
+        chassis.moveToPoint(14.868, 11.031, 2500);
 
-        //chassis.moveTo(14.149, 3.717, 5000);
+        //chassis.moveToPoint(14.149, 3.717, 5000);
         
         wing.set_value(true);
-        chassis.moveTo(-0.959, -4.317, 5000);
+        chassis.moveToPoint(-0.959, -4.317, 5000);
         //pros::delay(500);
         wing.set_value(false);
         
-        chassis.moveTo(14.868, 11.031, 2500);
-        chassis.moveTo(-0.959, -4.317, 5000);
+        chassis.moveToPoint(14.868, 11.031, 2500);
+        chassis.moveToPoint(-0.959, -4.317, 5000);
 
-        chassis.moveTo(-0.959, -34.712, 5000);
+        chassis.moveToPoint(-0.959, -34.712, 5000);
         
     }
     if(selector::auton == -2){ // BLUE FAR (not made yet)
         //pros::delay(500);
-        chassis.moveTo(0, 0, 5000);
+        chassis.moveToPoint(0, 0, 5000);
         wingSet(true);
-        chassis.moveTo(24, 0, 5000);
+        chassis.moveToPoint(24, 0, 5000);
         wingSet(false);
-        chassis.moveTo(48, -24, 5000);
+        chassis.moveToPoint(48, -24, 5000);
         intake(127);
-        chassis.moveTo(54, -30, 1200, 100);
-        chassis.moveTo(48, -24, 2000);
+        chassis.moveToPoint(54, -30, 1200, 100);
+        chassis.moveToPoint(48, -24, 2000);
         turnTo(90);
         intake(0);
         wingSet(true);
 
         setOrigin();
 
-        chassis.moveTo(48, 0, 1200);
+        chassis.moveToPoint(48, 0, 1200);
         outtake(127);
-        chassis.moveTo(36, 0, 5000);
+        chassis.moveToPoint(36, 0, 5000);
         outtake(127);
 
-        chassis.moveTo(0, 12, 5000);
+        chassis.moveToPoint(0, 12, 5000);
 
     }
     if(selector::auton == -3){ // BLUE NO-OP
@@ -499,13 +505,13 @@ void autonomous() {
         */
 
         // move to match loader
-        chassis.moveTo(13.000, 13.000, 5000);
+        chassis.moveToPoint(13.000, 13.000, 5000);
         turnTo(180);
 
         // get ready to shoot
         setOrigin();
         wingSet(true);
-        chassis.moveTo(0.000, -6.000, 1000);
+        chassis.moveToPoint(0.000, -6.000, 1000);
         turnTo(-24);
 
         // shoot and reset
@@ -513,19 +519,19 @@ void autonomous() {
         // moveFor(cata, 1000, 127);
         
         wingSet(false);
-        chassis.moveTo(0, 0, 5000);
+        chassis.moveToPoint(0, 0, 5000);
         turnTo(0);
 
         // line up for opposite side
         setOrigin();
-        chassis.moveTo(16.000, 16.000, 2000);
+        chassis.moveToPoint(16.000, 16.000, 2000);
         turnTo(0);
 
         // go to other side for ram
         setOrigin();
-        chassis.moveTo(0.000, 72.000, 5000);
-        chassis.moveTo(-18.000, 90.000, 5000);
-        chassis.moveTo(-76.000, 60.000, 5000);
+        chassis.moveToPoint(0.000, 72.000, 5000);
+        chassis.moveToPoint(-18.000, 90.000, 5000);
+        chassis.moveToPoint(-76.000, 60.000, 5000);
         turnTo(0);
 
         // ram.
@@ -535,8 +541,8 @@ void autonomous() {
 
         while(x <= 3){
             // back and forth
-            chassis.moveTo(0, 360.000, 700);
-            chassis.moveTo(0, 12.000, 700);
+            chassis.moveToPoint(0, 360.000, 700);
+            chassis.moveToPoint(0, 12.000, 700);
             turnTo(0);
             x++;
         }
