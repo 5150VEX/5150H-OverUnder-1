@@ -15,5 +15,3 @@
 #include "lemlib/pose.hpp"
 #include "lemlib/chassis/trackingWheel.hpp"
 #include "lemlib/chassis/chassis.hpp"
-
-#include "lemlib/logger/logger.hpp"

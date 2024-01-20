@@ -10,8 +10,6 @@
  */
 #pragma once
 
-#include <string>
-
 namespace lemlib {
 class Pose {
     public:
@@ -78,14 +76,14 @@ class Pose {
          * @param other the other pose
          * @return float
          */
-        float distance(Pose other) const;
+        float distance(Pose other);
         /**
          * @brief Get the angle between two poses
          *
          * @param other the other pose
          * @return float in radians
          */
-        float angle(Pose other) const;
+        float angle(Pose other);
         /**
          * @brief Rotate a pose by an angle
          *
@@ -94,12 +92,4 @@ class Pose {
          */
         Pose rotate(float angle);
 };
-
-/**
- * @brief Format a pose
- *
- * @param pose
- * @return std::string
- */
-std::string format_as(const Pose& pose);
 } // namespace lemlib
