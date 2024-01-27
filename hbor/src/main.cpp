@@ -371,7 +371,7 @@ void autonomous() {
         pros::delay(250);
         left = 0;
         right = 0;
-    /*
+    /* LJDSGN
         pros::delay(500);
         chassis.moveToPoint(0, 0, 5000);
         chassis.moveToPoint(-20.624, 26.859, 5000);
