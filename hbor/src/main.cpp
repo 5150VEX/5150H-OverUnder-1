@@ -19,7 +19,7 @@ pros::ADIDigitalOut wing ('a', false); // wing setup
 pros::ADIDigitalOut sideHang ('c', false); // sideHang setup
 
 // extra motors
-pros::Motor intakeMotor(10, pros::E_MOTOR_GEARSET_36, false, pros::E_MOTOR_ENCODER_DEGREES); // intake motor
+pros::Motor intakeMotor(10, pros::E_MOTOR_GEARSET_36, true, pros::E_MOTOR_ENCODER_DEGREES); // intake motor
 pros::Motor puncherMotor(20, pros::E_MOTOR_GEARSET_36, false, pros::E_MOTOR_ENCODER_DEGREES); // intake motor
 
 // drivebase setup
@@ -150,6 +150,12 @@ void moveFor(pros::Motor motor, int milliseconds, int voltage){
     motor.move(0);
 }
 
+void setOrigin(bool async){
+    if(!async){
+        chassis.waitUntilDone();
+    }
+    chassis.setPose(0, 0, 0); // sets the origin to where we place the bot
+}
 void setOrigin(){
     chassis.setPose(0, 0, 0); // sets the origin to where we place the bot
 }
@@ -258,6 +264,24 @@ void sideHangControl(){
 // ^ ^ ^ SIDE HANG CONTROLS                   ^ ^ ^ //
 //==================================================//
 
+//==================================================//
+// v v v TURN POWER CONTROLS                  v v v //
+float turnPower(){
+	bool r2 = controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2);
+	bool r1 = controller.get_digital(pros::E_CONTROLLER_DIGITAL_R1);
+
+    if (r2) {
+        return(1.00);
+    } else if (r1) {
+        return(0.5);
+    } else {
+        return(0.75);
+
+    }
+};
+// ^ ^ ^ TURN POWER CONTROLS                  ^ ^ ^ //
+//==================================================//
+
 void screen() {
     // loop forever
     while (true) {
@@ -266,6 +290,10 @@ void screen() {
         pros::lcd::print(0, "x: %f", pose.x); // print the x position
         pros::lcd::print(1, "y: %f", pose.y); // print the y position
         pros::lcd::print(2, "heading: %f", pose.theta); // print the heading
+
+        controller.print(0, 0, "theta: %f", pose.theta); // print the heading
+        controller.print(1, 0, "x: %f", pose.x); // print the x position
+        controller.print(2, 0, "y: %f", pose.y); // print the y position
         
         /*
         std::cout << ("x: " + std::to_string(pose.x)) << std::endl;
@@ -305,7 +333,8 @@ void autonomous() {
     // most points generated with https://5150vex.github.io/path.jerryio/
 	setOrigin(); // sets the origin to where we place the bot
 
-    if(selector::auton == 1){ // RED CLOSE
+    if(selector::auton == 1){ // RED CLOSE (NOT WORKING WELL)
+        /*
         chassis.moveToPoint(0, 0, 5000, false, 127, false);
         chassis.moveToPoint(0, -10, 5000, false, 127, false);
         wing.set_value(true);
@@ -321,94 +350,24 @@ void autonomous() {
 
         chassis.moveToPoint(0, -6, 5000, false, 127, false);
         chassis.moveToPoint(0, 0, 5000, false, 127, false);
+        */
         
-        /*
         chassis.moveToPoint(0, 0, 5000, true, 127, false);
-        chassis.moveToPoint(0, 48, 5000, true, 127, false); // 48
-        turnTo(90);
-        
-        setOrigin();
-        
-        wingSet(true);
-        chassis.moveToPoint(0, 39, 1000, true, 127, false); // 36
-        wingSet(false);
         outtake(127);
-        //chassis.moveToPoint(0, 0, 1000);
-        chassis.moveToPoint(0, -6, 1000);
-        chassis.moveToPoint(0, 3, 5000); // 0, 3
+        chassis.moveToPoint(0, 6, 5000, true, 127, false); // 48
         outtake(0);
-        turnTo(90);
-        
-        setOrigin();
-        
-        //  bininging
-        chassis.moveToPoint(0, 24, 5000);
-        chassis.moveToPoint(13.5, 25.5, 1200); // 18, 30 (originally 12, 24)
-        turnTo(-40); // 45
-        
-        setOrigin();
-        
-        wingSet(true);
-        chassis.moveToPoint(0,22, 1200);
-        wingSet(false);
-        turnTo(-50); // 45
-        
-        setOrigin();
+        chassis.moveToPoint(0, -24, 5000, false, 127, false); // 48
+        turnTo(-90);
 
-        chassis.moveToPoint(0, 32, 5000); // 31
-        */
-    }
-    if(selector::auton == 2){ // RED FAR (THE ONE THAT FUCKS)
-        setOrigin();
-        left = 127;
-        right = 127;
-        pros::delay(1000);
-        left = 0;
-        right = 0;
-        pros::delay(1000);
-        left = -127;
-        right = -127;
-        pros::delay(250);
-        left = 0;
-        right = 0;
-    /* LJDSGN
-        pros::delay(500);
-        chassis.moveToPoint(0, 0, 5000);
-        chassis.moveToPoint(-20.624, 26.859, 5000);
-        chassis.moveToPoint(-48.442, 30.216, 1200);
-        chassis.moveToPoint(-11.271, 30.216, 5000);
-        //chassis.moveToPoint(-5.036, -32.375, 5000);
-    */
-    }
-    if(selector::auton == 3){ // RED NO-OP
-        /*
-        chassis.moveToPoint(0, 0, 5000);
-        chassis.moveToPoint(0, 24, 5000);
-        chassis.moveToPoint(24, 48, 5000);
-        */
-        turnTo(90, 127, 3000);
-        //chassis.moveToPoint(24, 24, 5000);
-    }
-    if(selector::auton == -1){ // BLUE CLOSE
-        //pros::delay(500);
-        chassis.moveToPoint(0, 0, 5000);
-        chassis.moveToPoint(15, 11, 5000);
-        chassis.moveToPoint(24, 12, 1200); // RAM!!!!
-        chassis.moveToPoint(15, 11, 2500);
-
-        //chassis.moveToPoint(14.149, 3.717, 5000);
+        setOrigin(false);
         
-        wing.set_value(true);
-        chassis.moveToPoint(-0, -4, 5000);
-        //pros::delay(500);
-        wing.set_value(false);
+        intake(127);
+        chassis.moveToPoint(12, 48, 5000, true, 127, false); // 48
+        intake(0);
+        chassis.moveToPoint(0, 0, 5000, false, 127, false); // 48
         
-        chassis.moveToPoint(15, 11, 2500);
-        chassis.moveToPoint(-0, -4, 5000);
-
-        chassis.moveToPoint(-0, -35, 5000);  
     }
-    if(selector::auton == -2){ // BLUE FAR
+    if(selector::auton == -2){ // BLUE FAR (SORTA WORKS)
         //pros::delay(500);
         chassis.moveToPoint(0, 0, 5000);
         wingSet(true);
@@ -456,10 +415,10 @@ void autonomous() {
         chassis.moveToPoint(-24, -12, 5000);
 
     }
-    if(selector::auton == -3){ // BLUE NO-OP
+    if(selector::auton == -3){ // BLUE NO-OP (ACTUALLY NO OP)
     
     }
-    if(selector::auton == 0){ //skills?
+    if(selector::auton == 0){ //skills? (WHAT?)
         /* get silly ;P
             getSilly();
         */
@@ -521,14 +480,16 @@ void opcontrol() {
         auto power = controller.get_analog(ANALOG_LEFT_Y);
 
         // this turns the two stick into rotational and lateral movement
-        left.move(power - turn);
-		right.move(power + turn);
+         left.move(power - (turn * turnPower()));
+		right.move(power + (turn * turnPower()));
 
         // allows the voids to do their things (without this, the macros would not work)
 		wingControl();
 		sideHangControl();
 		intakeControl();
 		puncherControl();
+
+        //screen();
 
         // saves a bit of memory
         // there is less waiting because this void manages drive code and we cant have...
