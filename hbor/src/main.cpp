@@ -2,6 +2,7 @@
 #include "lemlib/api.hpp"
 #include "autoSelect/selection.h"
 #include "hbot.hpp"
+#include <iomanip>
 #include <iostream>
 #include <string>
 
@@ -15,22 +16,24 @@ pros::Controller controller(pros::E_CONTROLLER_MASTER); // controller setup
 // this sets up the inertial sensor so we can use PID properly
 pros::Imu gyro(15);
 
-pros::ADIDigitalOut wing ('a', false); // wing setup
-pros::ADIDigitalOut sideHang ('c', false); // sideHang setup
+pros::ADIDigitalOut wingfwd  ('c', false); // side wing setup
+pros::ADIDigitalOut wingbck  ('h', false); // top-down wing setup
+pros::ADIDigitalOut sideHang ('a', false); // sideHang setup
+pros::ADIDigitalOut highHang ('d', false); // sideHang setup
 
 // extra motors
-pros::Motor intakeMotor(10, pros::E_MOTOR_GEARSET_36, true, pros::E_MOTOR_ENCODER_DEGREES); // intake motor
+pros::Motor intakeMotor(18, pros::E_MOTOR_GEARSET_36, true, pros::E_MOTOR_ENCODER_DEGREES); // intake motor
 pros::Motor puncherMotor(20, pros::E_MOTOR_GEARSET_36, false, pros::E_MOTOR_ENCODER_DEGREES); // intake motor
 
 // drivebase setup
 // This initiallizes the four motors we use for the drive base
-pros::Motor rFmotor( 8, pros::E_MOTOR_GEARSET_06, true, pros::E_MOTOR_ENCODER_DEGREES);
-pros::Motor rMmotor( 2, pros::E_MOTOR_GEARSET_06, true, pros::E_MOTOR_ENCODER_DEGREES);
+pros::Motor rFmotor (8, pros::E_MOTOR_GEARSET_06, true, pros::E_MOTOR_ENCODER_DEGREES);
+pros::Motor rMmotor (2, pros::E_MOTOR_GEARSET_06, true, pros::E_MOTOR_ENCODER_DEGREES);
 pros::Motor rBmotor(12, pros::E_MOTOR_GEARSET_06, true, pros::E_MOTOR_ENCODER_DEGREES);
 
-pros::Motor lFmotor(9, pros::E_MOTOR_GEARSET_06, false, pros::E_MOTOR_ENCODER_DEGREES);
-pros::Motor lMmotor(6, pros::E_MOTOR_GEARSET_06, false, pros::E_MOTOR_ENCODER_DEGREES);
-pros::Motor lBmotor(7, pros::E_MOTOR_GEARSET_06, false, pros::E_MOTOR_ENCODER_DEGREES);
+pros::Motor lFmotor (9, pros::E_MOTOR_GEARSET_06, false, pros::E_MOTOR_ENCODER_DEGREES);
+pros::Motor lMmotor (6, pros::E_MOTOR_GEARSET_06, false, pros::E_MOTOR_ENCODER_DEGREES);
+pros::Motor lBmotor (7, pros::E_MOTOR_GEARSET_06, false, pros::E_MOTOR_ENCODER_DEGREES);
 
 // creates two motor groups that allow me to use "left" and "right" to control... 
 // the left and right side of the robot respectively
@@ -79,14 +82,14 @@ lemlib::ControllerSettings angularController {
     0,
     -40,
     0,
-    0,
+    0.25,
     1000,
-    0,
+    1,
     5000,
     5
 };
 	
-// create the chassis
+// create the chassis 
 // declare the robot to use in auton for PID
 lemlib::Chassis chassis(drivetrain, lateralController, angularController,sensors);
 
@@ -96,6 +99,9 @@ lemlib::Chassis chassis(drivetrain, lateralController, angularController,sensors
 
 bool wingFlag = true;
 bool wingState = false;
+
+bool wingbckFlag = true;
+bool wingbckState = false;
 
 bool endFlag = true;
 bool endState = false;
@@ -108,6 +114,9 @@ bool blockerState = false;
 
 bool sideHangFlag = true;
 bool sideHangState = false;
+
+bool highHangFlag = true;
+bool highHangState = false;
 
 const double PI = 3.14159;
 
@@ -122,26 +131,31 @@ void getSilly(){ // PLEASE don't use this, it literally just crashes the bot...
 
 //==================================================//
 // v v v AUTO STUFF                           v v v //
+void turnTo(float deg){
+    // using trig to turn a degree into a point that is far away from the bot in...
+    // ... order to remove the need for odometry
+	chassis.turnTo(sin(deg * (PI/180))*1000, cos(deg * (PI/180))*1000, 750);
+}
 void turnTo(float deg, float speed, int timeout){
     // using trig to turn a degree into a point that is far away from the bot in...
     // ... order to remove the need for odometry
 	chassis.turnTo(sin(deg * (PI/180))*1000, cos(deg * (PI/180))*1000, timeout, true, speed, false);
 }
-void turnTo(float deg){
-    // using trig to turn a degree into a point that is far away from the bot in...
-    // ... order to remove the need for odometry
-	chassis.turnTo(sin(deg * (PI/180))*1000, cos(deg * (PI/180))*1000, 1200);
+
+int defaultTimeout = 1500;
+void moveTo(float x, float y){
+    chassis.moveToPoint(x, y, defaultTimeout, true, 127, false);
+}
+void moveTo(float x, float y, bool forwards){
+    chassis.moveToPoint(x, y, defaultTimeout, forwards, 127, false);
+}
+void moveTo(float x, float y, bool forwards, int timeout){
+    chassis.moveToPoint(x, y, timeout, forwards, 127, false);
+}
+void moveTo(float x, float y, bool forwards, int timeout, int maxSpeed){
+    chassis.moveToPoint(x, y, timeout, forwards, maxSpeed, false);
 }
 
-
-
-void moveFor(pros::MotorGroup& motorgroup, int milliseconds, int voltage){
-    int start = pros::millis();
-    while((pros::millis() - start) <= milliseconds){
-        motorgroup.move(voltage);
-    }
-    motorgroup.move(0);
-}
 void moveFor(pros::Motor motor, int milliseconds, int voltage){
     int start = pros::millis();
     while((pros::millis() - start) <= milliseconds){
@@ -149,14 +163,21 @@ void moveFor(pros::Motor motor, int milliseconds, int voltage){
     }
     motor.move(0);
 }
+void moveFor(pros::MotorGroup& motorgroup, int milliseconds, int voltage){
+    int start = pros::millis();
+    while((pros::millis() - start) <= milliseconds){
+        motorgroup.move(voltage);
+    }
+    motorgroup.move(0);
+}
 
+void setOrigin(){
+    chassis.setPose(0, 0, 0); // sets the origin to where we place the bot
+}
 void setOrigin(bool async){
     if(!async){
         chassis.waitUntilDone();
     }
-    chassis.setPose(0, 0, 0); // sets the origin to where we place the bot
-}
-void setOrigin(){
     chassis.setPose(0, 0, 0); // sets the origin to where we place the bot
 }
 // ^ ^ ^ AUTO STUFF                           ^ ^ ^ //
@@ -197,8 +218,14 @@ void intakeControl(){
 		intakeMotor.brake();
 	}
 };
+void intake(){
+    intakeMotor.move(127);
+};
 void intake(int speed){
     intakeMotor.move(speed);
+};
+void outtake(){
+    intakeMotor.move(-127);
 };
 void outtake(int speed){
     intakeMotor.move(-speed);
@@ -208,7 +235,7 @@ void outtake(int speed){
 
 //==================================================//
 // v v v WING CONTROLS                        v v v //
-void wingControl(){
+void wingfwdControl(){
 	bool bA = controller.get_digital(pros::E_CONTROLLER_DIGITAL_A);
     
     // setting up a toggle for the wing
@@ -216,10 +243,10 @@ void wingControl(){
 		wingFlag = false;
         if (wingState){
             wingState = false;
-		    wing.set_value(false);
+		    wingfwd.set_value(false);
         } else {
             wingState = true;
-            wing.set_value(true);
+            wingfwd.set_value(true);
         }
 	}
 
@@ -230,15 +257,52 @@ void wingControl(){
 		wingFlag = true;
 	}
 };
-void wingSet(bool state){
-    wing.set_value(state);
-    wingState = state;
+void wingfwdSet(bool state){
+    wingfwd.set_value(state);
 };
+void wingbckControl(){
+	bool bB = controller.get_digital(pros::E_CONTROLLER_DIGITAL_B);
+    
+    // setting up a toggle for the wing
+	if (wingbckFlag && bB) {
+		wingbckFlag = false;
+        if (wingbckState){
+            wingbckState = false;
+		    wingbck.set_value(false);
+        } else {
+            wingbckState = true;
+            wingbck.set_value(true);
+        }
+	}
+
+    // the magic of the toggle function
+    // the wingFlag, once set to false, will only set to true again if the A button...
+    // ... isn't pressed, this prevents repeated calls to open and close the wing
+	if (!bB) {
+		wingbckFlag = true;
+	}
+};
+void wingbckSet(bool state){
+    wingbck.set_value(state);
+};
+
+void spaz(){
+    bool bLeft = controller.get_digital(pros::E_CONTROLLER_DIGITAL_LEFT);
+
+    if(bLeft == true){
+        wingfwdSet(false);
+        wingbckSet(false);
+        pros::delay(100);
+        wingbckSet(true);
+        wingfwdSet(true);
+        pros::delay(100);
+    }
+}
 // ^ ^ ^ WING CONTROLS                        ^ ^ ^ //
 //==================================================//
 
 //==================================================//
-// v v v SIDE HANG CONTROLS                   v v v //
+// v v v HANG CONTROLS                        v v v //
 void sideHangControl(){
 	bool bDown = controller.get_digital(pros::E_CONTROLLER_DIGITAL_DOWN);
 
@@ -261,7 +325,29 @@ void sideHangControl(){
 		sideHangFlag = true;
 	}
 };
-// ^ ^ ^ SIDE HANG CONTROLS                   ^ ^ ^ //
+void highHangControl(){
+	bool bUp = controller.get_digital(pros::E_CONTROLLER_DIGITAL_UP);
+
+    // setting up a toggle for the hanger
+	if (highHangFlag && bUp) {
+		highHangFlag = false;
+
+        if (highHangState){
+            highHangState = false;
+		    highHang.set_value(false);
+        } else {
+            highHangState = true;
+            highHang.set_value(true);
+        }
+	}
+
+    // the blockerFlag, once set to false, will only set to true again if the left bumper...
+    // ... isn't pressed, this prevents repeated calls to open and close the wing
+	if (!bUp) {
+		highHangFlag = true;
+	}
+};
+// ^ ^ ^ HANG CONTROLS                        ^ ^ ^ //
 //==================================================//
 
 //==================================================//
@@ -286,14 +372,12 @@ void screen() {
     // loop forever
     while (true) {
         lemlib::Pose pose = chassis.getPose(); // get the current position of the robot
-        
+
         pros::lcd::print(0, "x: %f", pose.x); // print the x position
         pros::lcd::print(1, "y: %f", pose.y); // print the y position
         pros::lcd::print(2, "heading: %f", pose.theta); // print the heading
 
-        controller.print(0, 0, "theta: %f", pose.theta); // print the heading
-        controller.print(1, 0, "x: %f", pose.x); // print the x position
-        controller.print(2, 0, "y: %f", pose.y); // print the y position
+        controller.print(0, 0, "O:%1.1f  x:%1.0f  y:%1.0f", pose.theta, pose.x, pose.y); // print the heading
         
         /*
         std::cout << ("x: " + std::to_string(pose.x)) << std::endl;
@@ -331,94 +415,123 @@ void competition_initialize() {
 void autonomous() {
     // turnTo(90, 127, 5000);
     // most points generated with https://5150vex.github.io/path.jerryio/
-	setOrigin(); // sets the origin to where we place the bot
+	setOrigin(true); // sets the origin to where we place the bot
 
-    if(selector::auton == 1){ // RED CLOSE (NOT WORKING WELL)
-        /*
-        chassis.moveToPoint(0, 0, 5000, false, 127, false);
-        chassis.moveToPoint(0, -10, 5000, false, 127, false);
-        wing.set_value(true);
-        pros::delay(250);
-        turnTo(-45);
-        pros::delay(250);
-        turnTo(0);
-        pros::delay(250);
-        chassis.moveToPoint(0, 0, 5000, false, 127, false);
-        wing.set_value(false);
-
-        setOrigin();
-
-        chassis.moveToPoint(0, -6, 5000, false, 127, false);
-        chassis.moveToPoint(0, 0, 5000, false, 127, false);
-        */
+    if(selector::auton == 1){   // RED CLOSE    (AWP BUT MORE GAY 8==D)         
         
-        chassis.moveToPoint(0, 0, 5000, true, 127, false);
-        outtake(127);
-        chassis.moveToPoint(0, 6, 5000, true, 127, false); // 48
-        outtake(0);
-        chassis.moveToPoint(0, -24, 5000, false, 127, false); // 48
-        turnTo(-90);
+        wingbckSet(true);
+        intake();
+        moveTo(10, 48, true, 1300);    // triball 1
+        intake(0);
+        wingbckSet(false);
+        moveTo(8, 40, false, 1200);    // triball 1
+
+        moveTo(13, 40, true, 1200);     // wedge over
+        wingfwdSet(true);
+        moveTo(18, 40, true, 1500);    // wedge over
+        moveTo(-16, 40, false, 1200);     
+        wingfwdSet(false);  
+        turnTo(180, 127, 700);
 
         setOrigin(false);
-        
-        intake(127);
-        chassis.moveToPoint(12, 48, 5000, true, 127, false); // 48
-        intake(0);
-        chassis.moveToPoint(0, 0, 5000, false, 127, false); // 48
-        
-    }
-    if(selector::auton == -2){ // BLUE FAR (SORTA WORKS)
-        //pros::delay(500);
-        chassis.moveToPoint(0, 0, 5000);
-        wingSet(true);
-        pros::delay(500);
-        wingSet(false);
-        turnTo(180);
-        
-        setOrigin();
 
-        chassis.moveToPoint(0, -24, 5000);
-        chassis.moveToPoint(24, -48, 5000);
-        intake(127);
-        chassis.moveToPoint(30, -54, 1200);
-        chassis.moveToPoint(24, -48, 2000);
+        
+        moveTo(0, 18, true);                    // reset and go to matchloader
+        moveTo(16, 30, true);
+        
+        setOrigin(false);
+
+        moveTo(0, 6, true);
+        turnTo(-20);
+        
+        setOrigin(false);
+        
+        moveTo(0, 18, true, 2000, 64);                   
+        wingbckSet(true);
+        turnTo(-55);
+
+        setOrigin(false);
+
+        pros::delay(250);
+        wingbckSet(false);
+        moveTo(0, 36, true, 10000, 127);                   // awp
+
+    }
+    if(selector::auton == 2){   // RED FAR      (6 BALLS IN UR MOUTH)           
+        wingfwdSet(true); // hit aliance triball to goal
+        moveTo(0, 18, true);
+        intake();
+        moveTo(-26, 53, true);                  // intake far middle ball
         turnTo(90);
-        intake(0);
-        //wingSet(true);
+        wingfwdSet(true);
 
-        // ram
-        setOrigin();
-
-        chassis.moveToPoint(0, -40, 1200); // -36
-        outtake(127);
-        chassis.moveToPoint(0, -24, 5000);
-        outtake(0);
-        //wingSet(false);
-        chassis.moveToPoint(-36, 0, 5000);
-        turnTo(179);
-
-        // second intake
-        setOrigin();
+        setOrigin();    
         
-        chassis.moveToPoint(0, -20, 1200);
-        chassis.moveToPoint(0, 0, 5000);
-        chassis.moveToPoint(24, 24, 5000);
-        chassis.moveToPoint(24, 36, 5000);
-        turnTo(135);
+        outtake();                                             // get both into goal
+        moveTo(-28, -16, true); // push
+        moveTo(7, -46, true);
 
-        // match loader
-        setOrigin();
+        moveTo(-29, -53, true);                 // outtake and set up for allyway triball
+        outtake();
 
-        wingSet(true);
-        chassis.moveToPoint(-12, -12, 5000);
-        wingSet(false);
-        chassis.moveToPoint(-24, -12, 5000);
+        moveTo(21, -41, true, 1000);   // get them all into goal
+        intake();   // allyway triball
+        moveTo(21, -41, false);                 
+        wingbckSet(true);  // matchloader triball
+        moveTo(21, -20, false); // push
+        
+        moveTo(21, -26, false);                 // get intake triball into goal
+        turnTo(90);
+        outtake();
+        turnTo(0);
+        moveTo(21, -20, false);
+    }
+    if(selector::auton == 3){   // RED NO-OP    (ACTUALLY NO OP)                
+        moveTo(0, 0, true);
+        
+        moveTo(-12, 0, true);
+        moveTo(33, 0, false);
+        wingbckSet(true);
+        moveTo(48, 31, true);
+        moveTo(41, 22, true);
+        moveTo(-7, 22, true);
 
     }
-    if(selector::auton == -3){ // BLUE NO-OP (ACTUALLY NO OP)
+    if(selector::auton == -1){  // BLUE CLOSE   (BASIC AWP)                     
+        wingbckSet(true);
+        pros::delay(500);
+
+        turnTo(-39);
+
+        setOrigin(false);
     
+        moveTo(0, 6, true);
+        wingbckSet(false);
+        moveTo(0, 36, true);
+        outtake();
+        pros::delay(500);
+        outtake(0);
+
+
     }
-    if(selector::auton == 0){ //skills? (WHAT?)
+    if(selector::auton == -2){  // BLUE FAR     (DRAKE 3 BALLS)                 
+        moveTo(0, 0, true);
+        intake();
+        moveTo(0, 12, true);
+        intake(0);
+        moveTo(0, -33, true);
+        wingbckSet(true);
+        moveTo(31, -48, true);
+        moveTo(22, -41, true);
+        moveTo(22, 7, true);
+
+    }
+    if(selector::auton == -3){  // BLUE NO-OP   (PUSHER)                        
+        chassis.moveToPoint(0, 0, 3000, true, 127, false);
+        chassis.moveToPoint(0, -480, 3000, false, 127, false);
+        chassis.moveToPoint(0, 0, 3000, true, 127, false);
+    }
+    if(selector::auton == 0){   // SKILLS       (WHAT?)                         
         /* get silly ;P
             getSilly();
         */
@@ -429,7 +542,7 @@ void autonomous() {
 
         // get ready to shoot
         setOrigin();
-        wingSet(true);
+        wingfwdSet(true);
         chassis.moveToPoint(0.000, -5.000, 1000);
         turnTo(-23);
         chassis.moveToPoint(1.000, -7.000, 1000);
@@ -438,28 +551,12 @@ void autonomous() {
 
         // shoot and reset
         //moveFor(puncher, 25000, 127); // 35000
-        // moveFor(puncher, 1000, 127);
-        
-        wingSet(false);
-        chassis.moveToPoint(0, 0, 5000);
-        turnTo(0);
-
-        // line up for opposite side
-        setOrigin();
-        chassis.moveToPoint(16.000, 16.000, 2000);
-        turnTo(0);
-
-        // go to other side for ram
-        setOrigin();
-        chassis.moveToPoint(0.000, 72.000, 5000);
-        chassis.moveToPoint(-18.000, 90.000, 5000);
-        chassis.moveToPoint(-76.000, 60.000, 5000);
-        turnTo(0);
+        moveFor(puncherMotor, 1000, 127);
 
         // ram.
         int x = 0;
         setOrigin();
-        wingSet(true);
+        wingfwdSet(true);
 
         while(x <= 3){
             // back and forth
@@ -468,7 +565,7 @@ void autonomous() {
             turnTo(0);
             x++;
         }
-        wingSet(false);
+        wingfwdSet(false);
         
     }
 }
@@ -484,10 +581,13 @@ void opcontrol() {
 		right.move(power + (turn * turnPower()));
 
         // allows the voids to do their things (without this, the macros would not work)
-		wingControl();
+		wingfwdControl();
+		wingbckControl();
 		sideHangControl();
+		highHangControl();
 		intakeControl();
 		puncherControl();
+        spaz();
 
         //screen();
 
