@@ -417,7 +417,7 @@ void autonomous() {
     // most points generated with https://5150vex.github.io/path.jerryio/
 	setOrigin(true); // sets the origin to where we place the bot
 
-    if(selector::auton == 1){   // RED CLOSE    (AWP BUT MORE GAY 8==D)         
+    if(selector::auton == 1){   // RED CLOSE    (AWP BUT MORE :D)         
         
         wingbckSet(true);
         intake();
